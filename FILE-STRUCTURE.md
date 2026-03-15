@@ -4,9 +4,9 @@
 
         ## Root
 
-        - Name: `GLIC__implementation__glic-cpp`
+        - Name: `glic__implementation__glic-cpp`
         - Role: `extracted-project`
-        - Path: `/Volumes/OWC Envoy Ultra/backup-not-duplicated/GLIC__implementation__glic-cpp`
+        - Path: `/Volumes/OWC Envoy Ultra/backup-not-duplicated/glic__implementation__glic-cpp`
 
         ## Immediate Children
 
