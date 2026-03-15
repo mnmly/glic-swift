@@ -2,8 +2,8 @@
 
         ## Repository Role
 
-        - Name: `GLIC__implementation__glic-cpp`
-        - Role: `extracted-project`
+        - Name: `glic-cpp`
+        - Role: `repo`
         - Original source path: `GLIC/implementation/glic-cpp`
 - Public surface: website/
 
