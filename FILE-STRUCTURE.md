@@ -19,6 +19,7 @@
 - `daito-testimage.png`
 - `examples/`
 - `external/`
+- `FILE-STRUCTURE.md`
 - `output/`
 - `presets/`
 - `README.md`
