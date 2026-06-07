@@ -62,3 +62,9 @@ cmake-build-*/
 # workspace-repo-normalizer: end
 # Local-only structure notes
 FILE-STRUCTURE.md
+
+# Committed preset effect gallery
+!output/
+output/*
+!output/preset-gallery/
+!output/preset-gallery/**
