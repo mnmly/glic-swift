@@ -136,7 +136,7 @@ final class GlicModel {
     var cppBlockSize: Int = 16
     var cppLevels: Int = 4
     var cppSortMode: Int = 0
-    var cppThreshold: Double = 50
+    var cppThreshold: Double = 25   // lower => longer sorted runs => more visible
     var cppSortVertical = false
     var cppLeak: Double = 0.5
 
