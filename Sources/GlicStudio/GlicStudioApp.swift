@@ -93,15 +93,74 @@ struct ContentView: View {
                 }
             }
 
+            group("Preset") {
+                Picker("Preset", selection: $model.selectedPreset) {
+                    Text("Custom (sliders)").tag(String?.none)
+                    ForEach(model.presets, id: \.self) { Text($0).tag(String?.some($0)) }
+                }
+                .labelsHidden()
+                .onChange(of: model.selectedPreset) { _, _ in model.scheduleCodec() }
+                Text("\(model.presets.count) presets loaded")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+
             group("Codec") {
                 picker("Color space", selection: $model.colorSpace,
                        options: Options.colorSpaces, onChange: model.scheduleCodec)
                 picker("Prediction", selection: $model.prediction,
                        options: Options.predictions, onChange: model.scheduleCodec)
+                picker("Wavelet", selection: $model.wavelet,
+                       options: Options.wavelets, onChange: model.scheduleCodec)
+                picker("Transform", selection: $model.transform,
+                       options: Options.transforms, onChange: model.scheduleCodec)
+                slider("Scale (raise for high quant)", value: $model.transformScale,
+                       range: 4...480, onChange: model.scheduleCodec)
+                picker("Encoding", selection: $model.encoding,
+                       options: Options.encodings, onChange: model.scheduleCodec)
                 slider("Quantization", value: $model.quantization, range: 0...255,
                        onChange: model.scheduleCodec)
                 slider("Threshold", value: $model.threshold, range: 1...60,
                        onChange: model.scheduleCodec)
+                picker("Min block", selection: $model.minBlock,
+                       options: Options.blocks, onChange: model.scheduleCodec)
+                picker("Max block", selection: $model.maxBlock,
+                       options: [("64", 64), ("128", 128), ("256", 256), ("512", 512)],
+                       onChange: model.scheduleCodec)
+                Toggle("Clamp mod256", isOn: $model.clampMod256)
+                    .onChange(of: model.clampMod256) { _, _ in model.scheduleCodec() }
+            }
+            .disabled(model.selectedPreset != nil)
+            .opacity(model.selectedPreset != nil ? 0.4 : 1)
+
+            group("Glitch effect (C++)") {
+                picker("Effect", selection: $model.cppEffect,
+                       options: Options.cppEffects, onChange: model.scheduleCodec)
+                if model.cppEffect != 0 {
+                    slider("Intensity", value: $model.cppIntensity, range: 0...100,
+                           onChange: model.scheduleCodec)
+                    picker("Block size", selection: $model.cppBlockSize,
+                           options: [("4", 4), ("8", 8), ("16", 16), ("32", 32), ("64", 64)],
+                           onChange: model.scheduleCodec)
+                    if model.cppEffect == 5 { // posterize
+                        Stepper("Levels: \(model.cppLevels)", value: $model.cppLevels, in: 2...32)
+                            .onChange(of: model.cppLevels) { _, _ in model.scheduleCodec() }
+                    }
+                    if model.cppEffect == 8 { // pixel sort
+                        picker("Sort by", selection: $model.cppSortMode,
+                               options: Options.sortModes, onChange: model.scheduleCodec)
+                        slider("Threshold", value: $model.cppThreshold, range: 0...255,
+                               onChange: model.scheduleCodec)
+                        Toggle("Vertical", isOn: $model.cppSortVertical)
+                            .onChange(of: model.cppSortVertical) { _, _ in model.scheduleCodec() }
+                    }
+                    if model.cppEffect == 9 { // prediction leak
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Leak: \(String(format: "%.2f", model.cppLeak))").font(.caption)
+                            Slider(value: $model.cppLeak, in: 0...1)
+                                .onChange(of: model.cppLeak) { _, _ in model.scheduleCodec() }
+                        }
+                    }
+                }
             }
 
             group("Parallelism") {

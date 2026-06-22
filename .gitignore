@@ -73,11 +73,10 @@ output/*
 .build/
 *.app/
 
-# compiled benchmark binaries (sources kept)
-bench/bench_cpp
-bench/bench_parallel
-bench/diag
-bench/wk_cpp
-bench/wk_swift_O
-bench/wk_swift_Ou
-bench/*.png
+# bench: keep sources, ignore compiled binaries + image artifacts
+bench/*
+!bench/*.cpp
+!bench/*.swift
+
+# never track .DS_Store, even under whitelisted dirs
+**/.DS_Store

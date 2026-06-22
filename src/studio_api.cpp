@@ -1,5 +1,7 @@
 #include "studio_api.hpp"
 #include "glic.hpp"
+#include "effects.hpp"
+#include "preset_loader.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -20,6 +22,7 @@ static CodecConfig makeConfig(const StudioParams& p) {
         ch.quantizationValue = p.quantization;
         ch.clampMethod = p.clampMod256 ? ClampMethod::MOD256 : ClampMethod::NONE;
         ch.transformType = static_cast<TransformType>(p.transform);
+        ch.transformScale = p.transformScale;
         ch.waveletType = static_cast<WaveletType>(p.wavelet);
         ch.encodingMethod = static_cast<EncodingMethod>(p.encoding);
     }
@@ -31,11 +34,10 @@ void setQuietLogging(bool quiet) {
     else std::cout.clear();
 }
 
-std::vector<Color> roundTripTiled(const Color* pixels, int w, int h, const StudioParams& p) {
-    const CodecConfig cfg = makeConfig(p);
+// Shared tiled parallel encode->decode round-trip for a given CodecConfig.
+static std::vector<Color> tiledRoundTrip(const Color* pixels, int w, int h,
+                                         const CodecConfig& cfg, int tile, int threads) {
     std::vector<Color> out((size_t)w * h, 0);
-
-    int tile = p.tile;
     if (tile <= 0) tile = std::max(w, h); // whole image
 
     struct T { int x, y, tw, th; };
@@ -45,7 +47,6 @@ std::vector<Color> roundTripTiled(const Color* pixels, int w, int h, const Studi
             tiles.push_back({x, y, std::min(tile, w - x), std::min(tile, h - y)});
     if (tiles.empty()) return out;
 
-    int threads = p.threads;
     if (threads <= 0) threads = (int)std::thread::hardware_concurrency();
     threads = std::max(1, std::min<int>(threads, (int)tiles.size()));
 
@@ -73,6 +74,46 @@ std::vector<Color> roundTripTiled(const Color* pixels, int w, int h, const Studi
     for (int i = 0; i < threads; ++i) pool.emplace_back(worker);
     for (auto& th : pool) th.join();
     return out;
+}
+
+std::vector<Color> roundTripTiled(const Color* pixels, int w, int h, const StudioParams& p) {
+    return tiledRoundTrip(pixels, w, h, makeConfig(p), p.tile, p.threads);
+}
+
+std::vector<Color> roundTripPreset(const Color* pixels, int w, int h,
+                                   const std::string& presetsDir, const std::string& presetName,
+                                   int tile, int threads) {
+    CodecConfig cfg; // sensible defaults, overwritten by the preset
+    PresetLoader::loadPresetByName(presetsDir, presetName, cfg);
+    return tiledRoundTrip(pixels, w, h, cfg, tile, threads);
+}
+
+std::vector<std::string> listPresets(const std::string& presetsDir) {
+    return PresetLoader::listPresets(presetsDir);
+}
+
+void applyStudioEffect(Color* pixels, int w, int h,
+                       int type, int intensity, int blockSize,
+                       int offsetX, int offsetY, int levels,
+                       int sortMode, int threshold, int sortVertical,
+                       float leakAmount, uint32_t seed) {
+    if (static_cast<EffectType>(type) == EffectType::NONE) return;
+    EffectConfig e;
+    e.type = static_cast<EffectType>(type);
+    e.intensity = intensity;
+    e.blockSize = blockSize;
+    e.offsetX = offsetX;
+    e.offsetY = offsetY;
+    e.levels = levels;
+    e.sortMode = static_cast<PixelSortMode>(sortMode);
+    e.threshold = threshold;
+    e.sortVertical = (sortVertical != 0);
+    e.leakAmount = leakAmount;
+    e.seed = seed;
+
+    std::vector<Color> buf(pixels, pixels + (size_t)w * h);
+    applyEffect(buf, w, h, e);
+    std::copy(buf.begin(), buf.end(), pixels);
 }
 
 } // namespace glic

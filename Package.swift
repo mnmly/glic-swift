@@ -15,7 +15,8 @@ let package = Package(
             sources: [
                 "glic.cpp", "planes.cpp", "colorspaces.cpp", "segment.cpp",
                 "prediction.cpp", "quantization.cpp", "wavelet.cpp",
-                "encoding.cpp", "bitio.cpp", "effects.cpp", "studio_api.cpp",
+                "encoding.cpp", "bitio.cpp", "effects.cpp",
+                "preset_loader.cpp", "studio_api.cpp",
             ],
             publicHeadersPath: "include",
             cxxSettings: [
