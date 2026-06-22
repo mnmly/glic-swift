@@ -68,3 +68,16 @@ FILE-STRUCTURE.md
 output/*
 !output/preset-gallery/
 !output/preset-gallery/**
+
+# Swift Package Manager / app bundle
+.build/
+*.app/
+
+# compiled benchmark binaries (sources kept)
+bench/bench_cpp
+bench/bench_parallel
+bench/diag
+bench/wk_cpp
+bench/wk_swift_O
+bench/wk_swift_Ou
+bench/*.png

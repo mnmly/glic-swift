@@ -1,0 +1,5 @@
+module CGlic {
+    header "CGlicShim.hpp"
+    requires cplusplus
+    export *
+}
