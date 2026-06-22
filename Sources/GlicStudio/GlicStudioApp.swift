@@ -134,30 +134,30 @@ struct ContentView: View {
 
             group("Glitch effect (C++)") {
                 picker("Effect", selection: $model.cppEffect,
-                       options: Options.cppEffects, onChange: model.scheduleCodec)
+                       options: Options.cppEffects, onChange: model.presentDecoded)
                 if model.cppEffect != 0 {
                     slider("Intensity", value: $model.cppIntensity, range: 0...100,
-                           onChange: model.scheduleCodec)
+                           onChange: model.presentDecoded)
                     picker("Block size", selection: $model.cppBlockSize,
                            options: [("4", 4), ("8", 8), ("16", 16), ("32", 32), ("64", 64)],
-                           onChange: model.scheduleCodec)
+                           onChange: model.presentDecoded)
                     if model.cppEffect == 5 { // posterize
                         Stepper("Levels: \(model.cppLevels)", value: $model.cppLevels, in: 2...32)
-                            .onChange(of: model.cppLevels) { _, _ in model.scheduleCodec() }
+                            .onChange(of: model.cppLevels) { _, _ in model.presentDecoded() }
                     }
                     if model.cppEffect == 8 { // pixel sort
                         picker("Sort by", selection: $model.cppSortMode,
-                               options: Options.sortModes, onChange: model.scheduleCodec)
+                               options: Options.sortModes, onChange: model.presentDecoded)
                         slider("Threshold", value: $model.cppThreshold, range: 0...255,
-                               onChange: model.scheduleCodec)
+                               onChange: model.presentDecoded)
                         Toggle("Vertical", isOn: $model.cppSortVertical)
-                            .onChange(of: model.cppSortVertical) { _, _ in model.scheduleCodec() }
+                            .onChange(of: model.cppSortVertical) { _, _ in model.presentDecoded() }
                     }
                     if model.cppEffect == 9 { // prediction leak
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Leak: \(String(format: "%.2f", model.cppLeak))").font(.caption)
                             Slider(value: $model.cppLeak, in: 0...1)
-                                .onChange(of: model.cppLeak) { _, _ in model.scheduleCodec() }
+                                .onChange(of: model.cppLeak) { _, _ in model.presentDecoded() }
                         }
                     }
                 }

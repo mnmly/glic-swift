@@ -65,9 +65,9 @@ struct GlitchJob: Sendable {
     var effectSeed: UInt32 = 12345
 }
 
-// Codec round-trip (preset or params) + optional C++ post-effect. Pure, off-main.
-func runGlitch(_ job: GlitchJob, _ px: [UInt32], _ w: Int, _ h: Int) -> [UInt32] {
-    var decoded: [UInt32] = px.withUnsafeBufferPointer { bp -> [UInt32] in
+// Codec round-trip only (preset or params). Pure, off-main.
+func runCodec(_ job: GlitchJob, _ px: [UInt32], _ w: Int, _ h: Int) -> [UInt32] {
+    px.withUnsafeBufferPointer { bp -> [UInt32] in
         if let preset = job.preset {
             return Array(glic.roundTripPreset(bp.baseAddress, Int32(w), Int32(h),
                                               std.string(job.presetsDir), std.string(preset),
@@ -82,15 +82,17 @@ func runGlitch(_ job: GlitchJob, _ px: [UInt32], _ w: Int, _ h: Int) -> [UInt32]
         p.tile = job.tile; p.threads = job.threads
         return Array(glic.roundTripTiled(bp.baseAddress, Int32(w), Int32(h), p))
     }
-    if job.effectType != 0 {
-        decoded.withUnsafeMutableBufferPointer { mb in
-            glic.applyStudioEffect(mb.baseAddress, Int32(w), Int32(h),
-                                   job.effectType, job.effectIntensity, job.effectBlockSize,
-                                   2, 0, job.effectLevels, job.effectSortMode, job.effectThreshold,
-                                   job.effectSortVertical, job.effectLeak, job.effectSeed)
-        }
+}
+
+// Apply the selected C++ post-effect (effects.cpp) in place. Pure, off-main.
+func applyCppEffect(_ buf: inout [UInt32], _ w: Int, _ h: Int, _ job: GlitchJob) {
+    guard job.effectType != 0 else { return }
+    buf.withUnsafeMutableBufferPointer { mb in
+        glic.applyStudioEffect(mb.baseAddress, Int32(w), Int32(h),
+                               job.effectType, job.effectIntensity, job.effectBlockSize,
+                               2, 0, job.effectLevels, job.effectSortMode, job.effectThreshold,
+                               job.effectSortVertical, job.effectLeak, job.effectSeed)
     }
-    return decoded
 }
 
 @MainActor
@@ -146,7 +148,11 @@ final class GlicModel {
     private var sourceW = 0
     private var sourceH = 0
     private var decodedCG: CGImage?
+    private var decodedRaw: [UInt32] = []   // cached codec output, before the C++ effect
+    private var decodedW = 0
+    private var decodedH = 0
     private var codecTask: Task<Void, Never>?
+    private var presentTask: Task<Void, Never>?
     private var camera: CameraController?
     private var cameraTask: Task<Void, Never>?
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
@@ -244,7 +250,7 @@ final class GlicModel {
             try? await Task.sleep(for: .milliseconds(120))
             if Task.isCancelled { return }
             let t0 = DispatchTime.now().uptimeNanoseconds
-            let decoded = await Task.detached(priority: .userInitiated) { runGlitch(job, px, w, h) }.value
+            let decoded = await Task.detached(priority: .userInitiated) { runCodec(job, px, w, h) }.value
             let t1 = DispatchTime.now().uptimeNanoseconds
             if Task.isCancelled { return }
             self?.finishCodec(decoded, w: w, h: h, ms: Double(t1 - t0) / 1e6)
@@ -252,10 +258,30 @@ final class GlicModel {
     }
 
     private func finishCodec(_ decoded: [UInt32], w: Int, h: Int, ms: Double) {
-        decodedCG = Pixels.toCGImage(decoded, w, h)
-        applyEffects()
+        decodedRaw = decoded; decodedW = w; decodedH = h
+        presentDecoded()
         let label = selectedPreset.map { "preset \($0)" } ?? (tile == 0 ? "whole" : "\(tile)px tiles")
-        status = String(format: "%.0f ms · %.1f fps · %@", ms, 1000 / max(ms, 0.01), label)
+        let fx = cppEffect == 0 ? "" : " · +\(Options.cppEffects.first { $0.1 == cppEffect }?.0 ?? "fx")"
+        status = String(format: "%.0f ms · %.1f fps · %@%@", ms, 1000 / max(ms, 0.01), label, fx)
+    }
+
+    // Apply the C++ effect to the cached codec output (no codec re-run) and show it.
+    // This is what makes toggling a C++ effect instant + clearly visible.
+    func presentDecoded() {
+        presentTask?.cancel()
+        guard !decodedRaw.isEmpty else { return }
+        let raw = decodedRaw, w = decodedW, h = decodedH
+        let job = currentJob()
+        presentTask = Task { [weak self] in
+            let out: [UInt32] = await Task.detached(priority: .userInitiated) {
+                var buf = raw
+                applyCppEffect(&buf, w, h, job)
+                return buf
+            }.value
+            if Task.isCancelled { return }
+            self?.decodedCG = Pixels.toCGImage(out, w, h)
+            self?.applyEffects()
+        }
     }
 
     // MARK: - GPU (Core Image) effects loop
@@ -321,8 +347,10 @@ final class GlicModel {
     private func renderFrame(_ f: CameraFrame) async {
         let job = currentJob()
         let t0 = DispatchTime.now().uptimeNanoseconds
-        let decoded = await Task.detached(priority: .userInitiated) {
-            runGlitch(job, f.pixels, f.width, f.height)
+        let decoded = await Task.detached(priority: .userInitiated) { () -> [UInt32] in
+            var buf = runCodec(job, f.pixels, f.width, f.height)
+            applyCppEffect(&buf, f.width, f.height, job)
+            return buf
         }.value
         let t1 = DispatchTime.now().uptimeNanoseconds
         if Task.isCancelled || source != .camera { return }

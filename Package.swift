@@ -36,6 +36,12 @@ let package = Package(
             path: "Sources/GlicStudio",
             swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
+        .executableTarget(
+            name: "GlicProbe",
+            dependencies: ["CGlic"],
+            path: "Sources/GlicProbe",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
+        ),
     ],
     cxxLanguageStandard: .cxx20
 )
