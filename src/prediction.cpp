@@ -10,7 +10,7 @@ namespace glic {
 namespace {
 
 std::mt19937& getRng() {
-    static std::mt19937 rng(12345);
+    static thread_local std::mt19937 rng(12345); // per-thread: thread-safe
     return rng;
 }
 

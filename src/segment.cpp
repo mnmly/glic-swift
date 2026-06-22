@@ -11,7 +11,7 @@ namespace {
 
 // Random number generator for standard deviation sampling
 std::mt19937& getRng() {
-    static std::mt19937 rng(42); // Fixed seed for reproducibility
+    static thread_local std::mt19937 rng(42); // per-thread: reproducible + thread-safe
     return rng;
 }
 

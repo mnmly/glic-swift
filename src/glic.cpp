@@ -150,8 +150,16 @@ std::vector<uint8_t> GlicCodec::encodeToBuffer(const Color* pixels, int width, i
                     quantize(planes, p, seg, pq, false);
                 }
 
-                // Add back predictions
-                pred = predict(seg.predType, planes, p, seg);
+                // Add back predictions. seg.predType is only set by the meta /
+                // REF / ANGLE predictors; for direct methods it stays NONE, so
+                // fall back to the channel method (mirroring the decoder's
+                // NONE -> channel-method rule). Otherwise the encoder reconstructs
+                // its own prediction reference with the wrong (zero) predictor and
+                // drifts away from the decoder segment by segment.
+                PredictionMethod effType = (seg.predType == PredictionMethod::NONE)
+                                               ? chConfig.predictionMethod
+                                               : seg.predType;
+                pred = predict(effType, planes, p, seg);
                 planes.add(p, seg, pred, chConfig.clampMethod);
             }
 

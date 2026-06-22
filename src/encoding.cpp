@@ -13,24 +13,24 @@ int calcBits(int scale) {
 void emitPackedBits(BitWriter& writer, int channel, int bits, int val, const ChannelConfig& config) {
     if (config.waveletType == WaveletType::NONE) {
         if (config.clampMethod == ClampMethod::NONE) {
-            writer.writeInt(val, false, 9);
+            writer.writeInt(val, true, 9); // residuals are signed (-255..255)
         } else if (config.clampMethod == ClampMethod::MOD256) {
             writer.writeInt(val, true, 8);
         }
     } else {
-        writer.writeInt(val, false, bits + 1);
+        writer.writeInt(val, true, bits + 1); // wavelet coeffs are signed
     }
 }
 
 int readPackedBits(BitReader& reader, int channel, int bits, const ChannelConfig& config) {
     if (config.waveletType == WaveletType::NONE) {
         if (config.clampMethod == ClampMethod::NONE) {
-            return reader.readInt(false, 9);
+            return reader.readInt(true, 9); // sign-extend signed residuals
         } else if (config.clampMethod == ClampMethod::MOD256) {
             return reader.readInt(true, 8);
         }
     } else {
-        return reader.readInt(false, bits + 1);
+        return reader.readInt(true, bits + 1); // sign-extend signed wavelet coeffs
     }
     return 0;
 }
