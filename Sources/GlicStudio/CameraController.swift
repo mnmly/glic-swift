@@ -82,7 +82,6 @@ final class CameraController: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
     private func configure() throws {
         session.beginConfiguration()
-        session.sessionPreset = .vga640x480
         guard let device = AVCaptureDevice.default(for: .video) else {
             session.commitConfiguration()
             throw NSError(domain: "GlicCamera", code: 1,
@@ -95,6 +94,14 @@ final class CameraController: NSObject, AVCaptureVideoDataOutputSampleBufferDele
                           userInfo: [NSLocalizedDescriptionKey: "Cannot add camera input"])
         }
         session.addInput(input)
+
+        // Use the highest source resolution the camera supports (so `targetWidth`
+        // up to ~1280 isn't upscaled). Falls back gracefully on older cameras.
+        for preset in [AVCaptureSession.Preset.hd1920x1080, .hd1280x720, .high, .vga640x480]
+        where session.canSetSessionPreset(preset) {
+            session.sessionPreset = preset
+            break
+        }
 
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         output.alwaysDiscardsLateVideoFrames = true

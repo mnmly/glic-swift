@@ -75,8 +75,11 @@ struct ContentView: View {
                 Picker("Camera res", selection: $model.cameraWidth) {
                     Text("240").tag(240)
                     Text("320").tag(320)
-                    Text("384").tag(384)
                     Text("480").tag(480)
+                    Text("640").tag(640)
+                    Text("768").tag(768)
+                    Text("960").tag(960)
+                    Text("1280").tag(1280)
                 }
                 .onChange(of: model.cameraWidth) { _, _ in model.updateCameraSettings() }
 
